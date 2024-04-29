@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pylab as plt
 
 base: str = "./datasets/"
 
@@ -39,31 +38,33 @@ transactions_cb = transactions[transactions['isCoinbase'] == 1]\
 
 merged_tx_output = pd.merge(transactions_cb, outputs, on='txId')\
     .drop(columns=['timestamp', 'txPos'])
-print(merged_tx_output.columns)
 
 
 # associate pool with address (better, id) of transactions 
 merged_pool_id = pd.merge(pool, mappings, on='address')\
     .drop('address', axis=1)
-print(merged_pool_id.columns)
+
 assert merged_pool_id['addressId'].unique().size == len(merged_pool_id.index)   # assert no double address <-> pool relation
 
 
 # de-anonymize
-deanonymized_tx = pd.merge(merged_tx_output, merged_pool_id, on='addressId', how='outer')
+deanonymized_tx = pd.merge(merged_tx_output, merged_pool_id, on='addressId', how='left')
+deanonymized_tx.fillna(value='Other', inplace=True)
+
+#print(deanonymized_tx)
+
+assert len(deanonymized_tx.index) == len(merged_tx_output.index)
 
 
-print(merged_tx_output)
-print(merged_pool_id)
-print(deanonymized_tx)
 
-print(f'{len(deanonymized_tx.index)} == {len(merged_tx_output.index)}')
+#find top 4 miners
+others = deanonymized_tx[deanonymized_tx['pool'] == 'Other']
 
+print(others)
+print(f'unique addresses: {others["addressId"].unique().size}')
 
-'''stil_anon_cond = ~merged_tx_output['txId'].isin(deanonymized_tx['txId'])
-anonymous_tx = merged_tx_output[stil_anon_cond]
-print(anonymous_tx)
+addressTxCount = others.groupby('addressId').agg(txCount=('txId', 'size')).reset_index()
+print(addressTxCount.nlargest(4, 'txCount'))
 
-print(f' {len(deanonymized_tx.index) + len(anonymous_tx.index)} == {len(merged_tx_output.index)}')
-assert len(deanonymized_tx.index) + len(anonymous_tx.index) == len(merged_tx_output.index)'''
-
+assert len(addressTxCount.index) == others["addressId"].unique().size
+assert addressTxCount['txCount'].sum() == len(others.index)
