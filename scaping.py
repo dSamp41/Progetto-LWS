@@ -8,19 +8,15 @@ import pandas as pd
 URL = 'https://www.walletexplorer.com'
 pools = ['Eligius', 'DeepBit', 'BitMinter', 'BTCGuild']
 
-#addressDf = pd.DataFrame(columns=['pool', 'address'])
 addresses = []
 
 options = Options()
 options.add_argument('--headless')
-#options.add_argument('--ignore-certificate-errors')
-#options.add_argument('--ignore-ssl-errors=yes')
 
 service = webdriver.FirefoxService(executable_path='./geckodriver')
 driver = webdriver.Firefox(service=service, options=options)    #TODO: headless mode
 driver.get(URL)
 
-start = time.time()
 
 for pool in pools:
     text_input = driver.find_element(By.XPATH, '/html/body/div[2]/form/p/label/input')
@@ -77,16 +73,8 @@ for pool in pools:
 
     #TODO: longer wait
 
-print()
 addressDf = pd.DataFrame.from_records(addresses, columns=['pool', 'address'])
-print(addressDf)
 
 driver.quit()
 
 addressDf.to_csv('poolAddresses.csv', index=False, header=False)
-print(f'fime: {time.time() - start}sec')
-
-'''
-gui: 42s
-headless:
-'''
