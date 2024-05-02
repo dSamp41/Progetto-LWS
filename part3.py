@@ -1,6 +1,8 @@
+import time
 from typing import List
 
 from matplotlib import pyplot as plt
+
 from addressScraping import setup_driver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement #typing
@@ -8,13 +10,12 @@ from selenium.common.exceptions import NoSuchElementException
 
 import networkx as nx
 
-
 ID = 'c82c10925cc3890f1299'
 URL = 'https://www.walletexplorer.com'
 
 # create graph
 g: nx.DiGraph = nx.DiGraph()
-K: int = 8
+K: int = 5
 
 driver = setup_driver()
 driver.get(URL)
@@ -48,7 +49,7 @@ def recursiveTransactionPath(driver, ID: str, N: int, g: nx.DiGraph):
         return 
     
     #print(f'recursiveTransactionPath iteration#{N}')
-    
+
     try:
         text_input = driver.find_element(By.XPATH, '/html/body/div[1]/form/input[1]')
         search_button = driver.find_element(By.XPATH, '/html/body/div[1]/form/input[2]')
@@ -64,7 +65,7 @@ def recursiveTransactionPath(driver, ID: str, N: int, g: nx.DiGraph):
     g.add_node(ID, color=N) 
 
     try:
-        driver.implicitly_wait(5)
+        driver.implicitly_wait(7)
 
         outputs_rows = driver\
             .find_element(By.XPATH, '/html/body/div[2]/table[2]/tbody/tr[2]/td[2]/table/tbody')\
@@ -80,6 +81,8 @@ def recursiveTransactionPath(driver, ID: str, N: int, g: nx.DiGraph):
         g.add_node(d['nextTxId'], color=N-1) 
         #g.add_edge(ID, d['nextTxId'], weight=d['amount'])
         g.add_edge(ID, d['nextTxId'], weight=d['amount'])
+
+        time.sleep(5)
         recursiveTransactionPath(driver, d['nextTxId'], N-1, g)
 
 
@@ -92,15 +95,19 @@ driver.quit()
 # graph drawing
 node_colors = [abs(node[1]['color'] - K) for node in g.nodes(data=True)]
 edge_amount = {(edge[0], edge[1]): edge[2]['weight'] for edge in g.edges(data=True)}
-pos = nx.multipartite_layout(g) #TODO: multipartite
+
+
+pos = nx.multipartite_layout(g, subset_key='color')
 #nx.spiral_layout(g)
 #nx.circular_layout(g)
+
 
 ec = nx.draw_networkx_edges(g, pos, alpha=0.3)
 nc = nx.draw_networkx_nodes(g, pos, nodelist=g.nodes(), node_color=node_colors, cmap=plt.get_cmap('cubehelix'), edgecolors='black')
 
-nx.draw_networkx_labels(g, pos, font_size=8)
+#nx.draw_networkx_labels(g, pos, font_size=6)
 nx.draw_networkx_edge_labels(g, pos, edge_labels=edge_amount)
+
 
 plt.colorbar(nc)
 plt.show()
