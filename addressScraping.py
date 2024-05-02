@@ -1,24 +1,10 @@
 from typing import Dict, TypeAlias
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
+
+from scrapingUtils import setup_driver
 
 Address: TypeAlias = str
 Wallet: TypeAlias = str
-
-#TODO: get and rotate proxy [https://www.zenrows.com/blog/selenium-proxy#how-to-set-selenium-proxy]
-#TODO: fake user agent [https://stackoverflow.com/questions/62490495/how-to-change-the-user-agent-using-selenium-and-python]
-def setup_driver(executable_path='/home/dan/Università/Info/3/LWS/progetto/geckodriver'):
-    proxy_server_url = "35.185.196.38:3128"
-    
-    options = Options()
-    #options.add_argument('--headless') #TODO: remove comment
-    options.add_argument(f'--proxy-server={proxy_server_url}')
-
-    service = webdriver.FirefoxService(executable_path=executable_path)
-    driver = webdriver.Firefox(service=service, options=options)
-
-    return driver
 
 
 def get_wallet(addresses: list[Address]) -> Dict[Address, Wallet]:

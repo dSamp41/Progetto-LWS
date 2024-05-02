@@ -5,16 +5,15 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 import pandas as pd
 
+from scrapingUtils import setup_driver
+
 URL = 'https://www.walletexplorer.com'
 pools = ['Eligius', 'DeepBit', 'BitMinter', 'BTCGuild']
 
 addresses = []
 
-options = Options()
-options.add_argument('--headless')
+driver = setup_driver()
 
-service = webdriver.FirefoxService(executable_path='./geckodriver')
-driver = webdriver.Firefox(service=service, options=options)    #TODO: headless mode
 driver.get(URL)
 
 
