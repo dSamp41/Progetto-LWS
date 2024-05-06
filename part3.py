@@ -10,12 +10,12 @@ from selenium.common.exceptions import NoSuchElementException
 
 import networkx as nx
 
-ID = 'c82c10925cc3890f1299'
+ID_START = 'c82c10925cc3890f1299'
 URL = 'https://www.walletexplorer.com'
 
 # create graph
 g: nx.DiGraph = nx.DiGraph()
-K: int = 5
+K: int = 4
 
 driver = setup_driver()
 driver.get(URL)
@@ -34,22 +34,30 @@ def elaborateOutput(lst: List[WebElement], current_id: str):
         if tokens.__contains__('unspent'):
             continue
         
+        #print(tokens)
+        
         full_txid = we.find_element(By.PARTIAL_LINK_TEXT, tokens[5])\
             .get_dom_attribute('href')\
             .replace('/txid/', '')
+        
+        if tokens[2] == 'address)':
+            next_wallet = None
+        else:
+            next_wallet = tokens[2]
 
-        to = {'nextAddress': tokens[1], 'amount': int(tokens[3].replace('.', '')), 'currentTxId': current_id, 'nextTxId': full_txid}
+        to = {'nextAddress': tokens[1], 'nextWallet': next_wallet, 'amount': float(tokens[3]), 'currentTxId': current_id, 'nextTxId': full_txid}
         res.append(to)
 
     return res
 
 
-def recursiveTransactionPath(driver, ID: str, N: int, g: nx.DiGraph):
+def recursiveTransactionPath(driver, ID: str, N: int, g: nx.DiGraph, wallet:str = 'CB', address='CB'):
     if(N == 0):
         return 
     
     #print(f'recursiveTransactionPath iteration#{N}')
 
+    # go to tx_id=ID page 
     try:
         text_input = driver.find_element(By.XPATH, '/html/body/div[1]/form/input[1]')
         search_button = driver.find_element(By.XPATH, '/html/body/div[1]/form/input[2]')
@@ -57,12 +65,12 @@ def recursiveTransactionPath(driver, ID: str, N: int, g: nx.DiGraph):
         text_input.clear()
         text_input.send_keys(ID)
         search_button.click()
-        #print(f'Actually at id: {ID}')        
+        print(f'Actually at id: {ID}')        
     except NoSuchElementException:
         print('Error with text bar or search button')
         return 
     
-    g.add_node(ID, color=N) 
+    g.add_node(ID, color=N, wallet=wallet, address=address) #TODO: fix CB label for every node until N-th layer
 
     try:
         driver.implicitly_wait(7)
@@ -72,42 +80,57 @@ def recursiveTransactionPath(driver, ID: str, N: int, g: nx.DiGraph):
             .find_elements(By.TAG_NAME, 'tr')
     except NoSuchElementException:
         print(f'Can\'t find tr @<Id: {ID}>')
-        return 
+        return
 
     outputs = elaborateOutput(outputs_rows, ID)
     #print(outputs_rows)
 
     for d in outputs:
-        g.add_node(d['nextTxId'], color=N-1) 
-        #g.add_edge(ID, d['nextTxId'], weight=d['amount'])
+        #print(d)
+        
+        if d['nextWallet'] is None:
+            node_wallet = d['nextAddress']
+        else:
+            node_wallet = d['nextWallet']
+
+        g.add_node(d['nextTxId'], color=N-1, wallet=node_wallet, address=d['nextAddress'])
         g.add_edge(ID, d['nextTxId'], weight=d['amount'])
 
         time.sleep(5)
-        recursiveTransactionPath(driver, d['nextTxId'], N-1, g)
+        recursiveTransactionPath(driver, d['nextTxId'], N-1, g, node_wallet, d['nextAddress'])
 
 
 
-recursiveTransactionPath(driver, ID, K, g)
-
+recursiveTransactionPath(driver, ID_START, K, g)
 driver.quit()
 
 
-# graph drawing
-node_colors = [abs(node[1]['color'] - K) for node in g.nodes(data=True)]
-edge_amount = {(edge[0], edge[1]): edge[2]['weight'] for edge in g.edges(data=True)}
 
+#TODO: label have to be wallets, not addresses
+
+# graph drawing
 
 pos = nx.multipartite_layout(g, subset_key='color')
 #nx.spiral_layout(g)
 #nx.circular_layout(g)
 
+node_colors = [abs(node[1]['color'] - K) for node in g.nodes(data=True)]
 
 ec = nx.draw_networkx_edges(g, pos, alpha=0.3)
 nc = nx.draw_networkx_nodes(g, pos, nodelist=g.nodes(), node_color=node_colors, cmap=plt.get_cmap('cubehelix'), edgecolors='black')
 
-#nx.draw_networkx_labels(g, pos, font_size=6)
+# node labels
+node_labels = {node[0]:node[1]['wallet'] for node in g.nodes(data=True)}
+#nx.draw_networkx_labels(g, pos, node_labels, font_size=6)
+nx.draw_networkx_labels(g, pos, font_size=6)
+
+
+#edge labels
+edge_amount = {(edge[0], edge[1]): edge[2]['weight'] for edge in g.edges(data=True)}
 nx.draw_networkx_edge_labels(g, pos, edge_labels=edge_amount)
 
+for n in g.nodes(data=True):
+    print(n)
 
 plt.colorbar(nc)
 plt.show()

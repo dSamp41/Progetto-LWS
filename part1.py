@@ -26,6 +26,55 @@ outputs = pd.read_csv(
 )
 
 
+# Script table/dict
+scripts_dict = {0: 0, 1:153, 2:180, 3:291}
+
+
+
+# Analisi fee rispetto a congestione
+transactions_ncb = transactions[transactions['isCoinbase'] == 0].drop(columns=['blockId', 'isCoinbase'])
+
+# Merge transactions with inputs; then calculate size of inputs
+merged_tx_inputs = pd.merge(transactions_ncb, inputs.drop(columns=['prevTxId', 'prevTxPos']), on='txId', how='inner')
+size_inputs = merged_tx_inputs.groupby('txId').size().reset_index(name='num_inputs')
+
+# Merge transactions with outputs; then calculate size of outputs
+merged_tx_outputs = pd.merge(transactions_ncb, outputs.drop(columns=['txPos', 'addressId']), on='txId', how='inner')
+merged_tx_outputs['scriptSize'] = merged_tx_outputs['scriptType'].replace(scripts_dict)
+
+size_outputs = merged_tx_outputs.groupby('txId').agg({'amount': 'count','scriptSize': 'sum'}).reset_index()
+size_outputs.rename(columns={'amount': 'num_outputs'}, inplace=True)
+
+
+# Merge the sizes with transactions
+merged_transactions = pd.merge(transactions_ncb, size_inputs, on='txId', how='left')
+merged_transactions = pd.merge(merged_transactions, size_outputs, on='txId', how='left')
+
+INPUT_SIZE = 40
+OUTPUT_SIZE = 9
+
+# Calculate size of each transaction
+merged_transactions['transaction_size'] = merged_transactions['num_inputs'] * INPUT_SIZE + merged_transactions['num_outputs'] * OUTPUT_SIZE + merged_transactions['scriptSize']
+merged_transactions = merged_transactions.drop(columns=['num_inputs', 'num_outputs', 'scriptSize'])
+
+print(merged_transactions)
+
+tt = merged_transactions.groupby('timestamp').agg({'fee': 'mean', 'transaction_size': 'sum'}).reset_index()
+tt = tt.rename(columns={'fee': 'avgFee', 'transaction_size': 'congestion'})
+
+print(tt)
+
+tt.plot.scatter(x='timestamp', y='avgFee', title='Andamento avgFee nel tempo')
+tt.plot.line(x='timestamp', y='congestion', title='Andamento congestione nel tempo')
+plt.show()
+
+
+print(transactions_ncb.nlargest(5, 'fee'))
+print(tt.nlargest(5, 'avgFee'))
+
+'''
+Come si nota dai grafici, nonostante nel tempo la congestione della blockchain sia aumentata di qualche ordine di grandezza, lo stesso non si può dire per la fee media. Nonostante alcuni outlier, generalmente è rimasta al di sotto del valore 2500
+'''
 
 # Analisi script usati in transazioni
 merged_tx_outputs = pd.merge(

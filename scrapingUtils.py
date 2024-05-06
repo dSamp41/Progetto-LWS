@@ -26,7 +26,6 @@ def generate_proxies():
     return proxies
 
 
-#TODO: get and rotate proxy [https://www.zenrows.com/blog/selenium-proxy#how-to-set-selenium-proxy]
 #TODO: fake user agent [https://stackoverflow.com/questions/62490495/how-to-change-the-user-agent-using-selenium-and-python]
 def setup_driver(executable_path='/home/dan/Università/Info/3/LWS/progetto/geckodriver'):
     
@@ -35,8 +34,9 @@ def setup_driver(executable_path='/home/dan/Università/Info/3/LWS/progetto/geck
     proxy_server_url = random.choice(proxies)
     
     options = Options()
-    #options.add_argument('--headless') #TODO: remove comment
+    options.add_argument('--headless') #TODO: remove comment
     options.add_argument(f'--proxy-server={proxy_server_url}')
+    options.add_argument(f'user-agent={UserAgent().random}')
 
     service = webdriver.FirefoxService(executable_path=executable_path)
     driver = webdriver.Firefox(service=service, options=options)

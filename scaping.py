@@ -1,6 +1,4 @@
 import time
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 import pandas as pd
@@ -13,9 +11,7 @@ pools = ['Eligius', 'DeepBit', 'BitMinter', 'BTCGuild']
 addresses = []
 
 driver = setup_driver()
-
 driver.get(URL)
-
 
 for pool in pools:
     text_input = driver.find_element(By.XPATH, '/html/body/div[2]/form/p/label/input')
@@ -72,8 +68,7 @@ for pool in pools:
 
     #TODO: longer wait
 
-addressDf = pd.DataFrame.from_records(addresses, columns=['pool', 'address'])
-
 driver.quit()
 
+addressDf = pd.DataFrame.from_records(addresses, columns=['pool', 'address'])
 addressDf.to_csv('poolAddresses.csv', index=False, header=False)
