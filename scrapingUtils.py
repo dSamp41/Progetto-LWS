@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from fake_useragent import UserAgent
+import urllib.error
 
 # Funzione per la estrazione dei proxy da sslproxies.org
 def generate_proxies():
@@ -13,7 +14,12 @@ def generate_proxies():
     
     proxies_req = Request('https://www.sslproxies.org/')
     proxies_req.add_header('User-Agent', ua.random)
-    proxies_doc = urlopen(proxies_req).read().decode('utf8')
+    try:
+        proxies_doc = urlopen(proxies_req).read().decode('utf8')
+    except urllib.error.URLError:
+        print("There was an Internet error")
+        return
+
     soup = BeautifulSoup(proxies_doc, 'html.parser')
     
     proxies_table = soup.find('table', class_='table table-striped table-bordered')

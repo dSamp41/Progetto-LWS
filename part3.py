@@ -2,6 +2,7 @@ import time
 from typing import List
 
 from matplotlib import pyplot as plt
+import numpy as np
 
 from addressScraping import setup_driver
 from selenium.webdriver.common.by import By
@@ -15,7 +16,7 @@ URL = 'https://www.walletexplorer.com'
 
 # create graph
 g: nx.DiGraph = nx.DiGraph()
-K: int = 4
+K: int = 5
 
 driver = setup_driver()
 driver.get(URL)
@@ -105,14 +106,12 @@ recursiveTransactionPath(driver, ID_START, K, g)
 driver.quit()
 
 
-
-#TODO: label have to be wallets, not addresses
-
 # graph drawing
 
+#https://stackoverflow.com/questions/21978487/improving-python-networkx-graph-layout
 pos = nx.multipartite_layout(g, subset_key='color')
-#nx.spiral_layout(g)
-#nx.circular_layout(g)
+#nx.nx_agraph.graphviz_layout(g, prog="fdp")
+
 
 node_colors = [abs(node[1]['color'] - K) for node in g.nodes(data=True)]
 
@@ -120,9 +119,8 @@ ec = nx.draw_networkx_edges(g, pos, alpha=0.3)
 nc = nx.draw_networkx_nodes(g, pos, nodelist=g.nodes(), node_color=node_colors, cmap=plt.get_cmap('cubehelix'), edgecolors='black')
 
 # node labels
-node_labels = {node[0]:node[1]['wallet'] for node in g.nodes(data=True)}
-#nx.draw_networkx_labels(g, pos, node_labels, font_size=6)
-nx.draw_networkx_labels(g, pos, font_size=6)
+node_labels = {node[0]:node[1]['address'] for node in g.nodes(data=True)}
+nx.draw_networkx_labels(g, pos, node_labels, font_size=6)
 
 
 #edge labels
@@ -133,4 +131,33 @@ for n in g.nodes(data=True):
     print(n)
 
 plt.colorbar(nc)
+#plt.show()
+
+
+# degree distribution
+vk = dict(g.out_degree())
+
+values = list(vk.values())
+#print('vk', values)
+
+# remove ending points (out_degree == 0)
+num_ending_nodes = 0
+while(0 in values):
+    values.remove(0)
+    num_ending_nodes += 1
+
+#print(f"num_ending_nodes: {num_ending_nodes}")
+
+meanDegree = np.mean(values)
+#print(f'Mean degree: {meanDegree}')
+
+
+# plotting distribution
+plt.figure()
+plt.hist(values)
+
+plt.title("Degree distribution")
+plt.xlabel("Degree")
+plt.ylabel("#nodes")
+
 plt.show()

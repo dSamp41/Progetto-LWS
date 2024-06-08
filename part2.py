@@ -164,6 +164,10 @@ rows = nBlocks_grouped['pool'].unique().size
 plt.subplots_adjust(hspace=0.5)
 
 i = 0
+print(interest_df)
+
+
+'''
 for p in nBlocks_grouped['pool']:
     df = interest_df[interest_df['pool'] == p]\
         .drop(columns=['pool'])\
@@ -182,15 +186,65 @@ for p in nBlocks_grouped['pool']:
 
     axs[1].bar(df['timestamp'], df['totalAmount'])
     axs[1].set_title(f'{p}: andamento reward')
-        
-    '''axs[i, 0].bar(df['timestamp'], df['blockCount'])
-    axs[i, 0].set_title(f'{p}: andamento blocchi minati')
-    axs[i, 0].set_yscale('log')
+'''
 
-    axs[i, 1].bar(df['timestamp'], df['totalAmount'])
-    axs[i, 1].set_title(f'{p}: andamento reward')'''
+#interest_df.plot.bar(x="timestamp", y="amount")
 
-    #i += 1
 
-    
+downsampled_df = pd.DataFrame()
+for p in nBlocks_grouped['pool']:
+    df = interest_df[interest_df['pool'] == p]\
+    .resample('1ME', on='timestamp')\
+    .agg({'blockId': 'count', 'amount': 'sum'})\
+    .reset_index()
+
+    df['pool'] = p
+
+    downsampled_df = pd.concat([downsampled_df, df])
+
+
+downsampled_df = downsampled_df.rename(columns={"blockId": "blockCount"})
+downsampled_df = downsampled_df.reset_index(drop=True)
+downsampled_df.sort_values(by="timestamp", inplace=True)
+
+print(f"downsampled_df\n{downsampled_df}")
+
+#plt.show()
+
+
+
+#Stacked bars
+grouped = downsampled_df.groupby(['timestamp', 'pool']).sum().reset_index()
+print(f"grouped\n{grouped}")
+
+# Pivot the data to get 'pool' as columns, 'timestamp' as index, and 'amount' as values
+pivot_amounts_df = grouped.pivot(index='timestamp', columns='pool', values='amount').fillna(0)
+
+print(f"pivot_df\n{pivot_amounts_df}")
+
+# Plot the stacked bar chart
+pivot_amounts_df.plot(kind='bar', stacked=True, figsize=(10, 6))
+
+# Customize the plot
+plt.title('Andamento Amounts')
+plt.xlabel('Timestamp')
+plt.ylabel('Amount')
+plt.legend(title='Pool')
+
+
+
+# Pivot the data to get 'pool' as columns, 'timestamp' as index, and 'amount' as values
+pivot_blocks_df = grouped.pivot(index='timestamp', columns='pool', values='blockCount').fillna(0)
+
+print(f"pivot_df\n{pivot_blocks_df}")
+
+# Plot the stacked bar chart
+pivot_blocks_df.plot(kind='bar', stacked=True, figsize=(10, 6))
+
+# Customize the plot
+plt.title('Andamento blocchi minati')
+plt.xlabel('Timestamp')
+plt.ylabel('Amount')
+plt.legend(title='Pool')
+
 plt.show()
